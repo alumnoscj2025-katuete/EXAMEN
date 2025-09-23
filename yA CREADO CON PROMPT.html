@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Examen de Arte - 7º Grado</title>
+<style>
+  body { font-family: Arial; margin: 10px; background: #f9f9f9; }
+  h1 { text-align: center; color: #333; }
+  .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
+  select, input[type=text], button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+  label { display: block; margin: 6px 0; font-size: 15px; }
+  #btnEnviar { background-color: #2196F3; color: white; margin-top: 10px; }
+  #btnPDF { background-color: #4CAF50; color: white; margin-top: 10px; display:none; }
+  @media (max-width: 600px) { select, input[type=text], button { font-size: 18px; padding: 12px; } }
+</style>
+</head>
+<body>
+
+<h1>📘 Examen de Arte – 7º Grado</h1>
+
+<div class="card">
+  <h3>Seleccioná tus datos</h3>
+  <select id="selTurno"><option value="">-- Turno --</option></select>
+  <select id="selGrado"><option value="">-- Grado --</option></select>
+  <select id="selEst"><option value="">-- Estudiante --</option></select>
+  <select id="selMat"><option value="">-- Materia --</option></select>
+</div>
+
+<div id="preguntas"></div>
+
+<button id="btnEnviar">📤 Enviar Respuestas</button>
+<button id="btnPDF">💾 Generar PDF</button>
+
+<script>
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbzTTvI2QYoBAHcoQKY8YDftGirkD6c5FTUZ0PBkhp83iyJjUFNd0OgKLG4l7iMtu3az/exec";
+
+const selTurno = document.getElementById("selTurno");
+const selGrado = document.getElementById("selGrado");
+const selEst   = document.getElementById("selEst");
+const selMat   = document.getElementById("selMat");
+const btnEnviar= document.getElementById("btnEnviar");
+const btnPDF   = document.getElementById("btnPDF");
+const divPreg  = document.getElementById("preguntas");
+
+// Arreglo de preguntas
+const examenData = [
+  {tipo:"multiple", pregunta:"1. ¿Qué movimiento artístico se caracteriza por la representación de los objetos desde múltiples puntos de vista, fragmentando la figura y usando formas geométricas?", opciones:["a) Impresionismo","b) Surrealismo","c) Cubismo","d) Expresionismo"], correcta:"c) Cubismo"},
+  {tipo:"multiple", pregunta:"2. ¿Qué famoso artista del Renacimiento pintó 'La Mona Lisa' y 'La Última Cena'?", opciones:["a) Vincent van Gogh","b) Salvador Dalí","c) Leonardo da Vinci","d) Claude Monet"], correcta:"c) Leonardo da Vinci"},
+  {tipo:"multiple", pregunta:"3. ¿Cuál de los siguientes no es un elemento fundamental del arte?", opciones:["a) Línea","b) Sabor","c) Forma","d) Textura"], correcta:"b) Sabor"},
+  {tipo:"multiple", pregunta:"4. ¿Qué técnica de pintura utiliza pigmentos disueltos en agua y aglutinados con goma arábiga, resultando en colores transparentes?", opciones:["a) Pintura al óleo","b) Témpera","c) Acuarela","d) Acrílico"], correcta:"c) Acuarela"},
+  {tipo:"multiple", pregunta:"5. ¿Qué famosa artista mexicana es conocida por sus autorretratos que exploran temas de identidad y dolor?", opciones:["a) María Izquierdo","b) Remedios Varo","c) Leonora Carrington","d) Frida Kahlo"], correcta:"d) Frida Kahlo"},
+  {tipo:"vf", pregunta:"6. ¿Es la escultura una técnica que crea obras de arte bidimensionales?", correcta:"Falso"},
+  {tipo:"vf", pregunta:"7. ¿Es cierto que el color verde se forma al mezclar los colores primarios rojo y amarillo?", correcta:"Falso"},
+  {tipo:"vf", pregunta:"8. ¿Es Antoni Gaudí un famoso arquitecto español conocido por su estilo Modernista?", correcta:"Verdadero"},
+  {tipo:"vf", pregunta:"9. ¿La famosa obra 'La noche estrellada' fue pintada por el artista mexicano Diego Rivera?", correcta:"Falso"},
+  {tipo:"vf", pregunta:"10. El Grito de Edvard Munch es una de las obras más representativas del movimiento artístico conocido como Surrealismo.", correcta:"Falso"}
+];
+
+window.onload = () => {
+  cargarConfig();
+  selTurno.onchange = cargarEstudiantes;
+  selGrado.onchange = cargarEstudiantes;
+  selMat.onchange = mostrarPreguntas;
+  btnEnviar.onclick = enviarRespuestas;
+  btnPDF.onclick = generarPDF;
+};
+
+async function cargarConfig() {
+  try {
+    const res = await fetch(`${URL_SCRIPT}?action=config`);
+    const cfg = await res.json();
+    llenarSelect(selTurno, cfg.turnos);
+    llenarSelect(selGrado, cfg.grados);
+    llenarSelect(selMat, cfg.materias);
+  } catch(err) { alert("❌ Error al cargar configuración: "+err.message); }
+}
+
+function llenarSelect(select, arr){
+  select.innerHTML = "";
+  const def = select===selTurno?"-- Turno --": select===selGrado?"-- Grado --":"-- Materia --";
+  select.appendChild(new Option(def,""));
+  arr.forEach(v=>select.appendChild(new Option(v,v)));
+}
+
+async function cargarEstudiantes(){
+  const g = selGrado.value, t = selTurno.value;
+  if(!g||!t) return;
+  try{
+    const res = await fetch(`${URL_SCRIPT}?action=estudiantes&grado=${g}&turno=${t}`);
+    const lst = await res.json();
+    selEst.innerHTML = "";
+    selEst.appendChild(new Option("-- Estudiante --",""));
+    lst.forEach(e=>selEst.appendChild(new Option(e.nombre,e.nombre)));
+  }catch(err){ alert("❌ Error al cargar estudiantes: "+err.message); }
+}
+
+function mostrarPreguntas(){
+  divPreg.innerHTML = "";
+  examenData.forEach((q,i)=>{
+    let html = `<div class="card"><b>${q.pregunta}</b>`;
+    if(q.tipo==="multiple"){
+      q.opciones.forEach(opt=>{
+        html += `<label><input type="radio" name="preg${i}" value="${opt}"> ${opt}</label>`;
+      });
+    } else if(q.tipo==="vf"){
+      html += `<label><input type="radio" name="preg${i}" value="Verdadero"> Verdadero</label>`;
+      html += `<label><input type="radio" name="preg${i}" value="Falso"> Falso</label>`;
+    } else if(q.tipo==="texto"){
+      html += `<input type="text" name="preg${i}">`;
+    }
+    html += `</div>`;
+    divPreg.insertAdjacentHTML("beforeend", html);
+  });
+}
+
+async function enviarRespuestas(){
+  const est = selEst.value, mat = selMat.value, g = selGrado.value, t = selTurno.value;
+  if(!est||!mat) return alert("⚠️ Completá todos los campos");
+
+  const preguntas = examenData.map(q=>q.pregunta);
+  const correctas = examenData.map(q=>q.correcta);
+  const respuestas = examenData.map((_,i)=>{
+    const sel = document.querySelector(`input[name='preg${i}']:checked`);
+    if(sel) return sel.value;
+    const txt = document.querySelector(`input[name='preg${i}']`);
+    return txt? txt.value : "";
+  });
+
+  let nota = 0;
+  respuestas.forEach((r,i)=>{ if((r||"").trim().toLowerCase()=== (correctas[i]||"").trim().toLowerCase()) nota++; });
+
+  const payload = {estudiante: est, grado: g, turno: t, materia: mat, preguntas, respuestas, correctas, nota};
+
+  try{
+    const res = await fetch(URL_SCRIPT,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain"},
+      body: JSON.stringify(payload)
+    });
+    const ok = await res.json();
+    if(ok.status==="ok" || ok.success===true){
+      alert(`✅ Nota: ${nota}/${correctas.length}`);
+      btnPDF.style.display="block";
+    } else { alert("❌ Error al guardar respuestas en Sheets"); }
+  }catch(err){ alert("❌ Error guardando respuestas. Revisá la consola."); console.error(err); }
+}
+
+function generarPDF(){
+  const contenido = divPreg.innerHTML;
+  const win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<html><head><title>Examen PDF</title></head><body>`);
+  win.document.write(`<h1>Examen de Arte</h1>`);
+  win.document.write(`<h3>Estudiante: ${selEst.value}</h3>`);
+  win.document.write(contenido);
+  win.document.write('</body></html>');
+  win.document.close();
+  win.print();
+}
+</script>
+</body>
+</html>
+
